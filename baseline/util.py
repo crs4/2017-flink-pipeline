@@ -5,7 +5,11 @@ import subprocess
 import tempfile
 from contextlib import contextmanager
 
-import pydoop.hdfs as phdfs
+try:
+    import pydoop.hdfs as phdfs
+    pydoop_here = True
+except ImportError:
+    pydoop_here = False
 
 
 def setup_logging(log_level=None):
@@ -33,6 +37,8 @@ def get_exec(name):
     raise ValueError("Couldn't find executable {} in the PATH".format(name))
 
 def mk_hdfs_temp_dir(prefix):
+    if not pydoop_here:
+        raise NotImplementedError("Pydoop not available on this system")
     found = True
     while found:
         tmp = os.path.basename(tempfile.mktemp(prefix=prefix))
