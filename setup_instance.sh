@@ -25,3 +25,7 @@ cd rapi
 cd bwa-auto-build
 make -j 30
 cp bwa "${Bin}"
+
+
+cd "${HOME}"
+git clone https://github.com/crs4/2017-flink-pipeline.git
