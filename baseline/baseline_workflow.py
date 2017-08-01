@@ -152,7 +152,7 @@ def _run_bwa_to_cram(sample_file_lists, ref, output, bwa_path, samtools_path, nt
 
     cmd = "{} mem -t {:d} -T 0 {} <(gunzip -c {}) <(gunzip -c {})".format(
             bwa_path, nthreads, ref, ' '.join(r1_files), ' '.join(r2_files))
-    cmd += " | {} view -T {} -F 0x900 -C --threads {} > {}".format(samtools_path, ref, nthreads, output)
+    cmd += " | {} view -T {} -F 0x900 -C --threads {} > {}".format(samtools_path, ref, nthreads, output + ".cram")
 
     logger.debug("Executing cmd: %s", cmd)
     subprocess.check_call(cmd, shell=True, executable='/bin/bash')
@@ -167,7 +167,7 @@ def run_alignments(bcl_output_dir, output_dir, reference, bwa_path, samtools_pat
 
     for name, file_lists in samples.iteritems():
         logger.info("Aligning sample %s", name)
-        output_file = os.path.join(output_dir, name + '.sam')
+        output_file = os.path.join(output_dir, name)
         try:
             _run_bwa_to_cram(file_lists, reference, output_file, bwa_path, samtools_path, nthreads)
         except subprocess.CalledProcessError as e:
