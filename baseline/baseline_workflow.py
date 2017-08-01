@@ -17,7 +17,8 @@ from util import setup_logging, get_exec
 logger = setup_logging()
 
 GlobalConf = {
-        'bwa_nthreads'     : 15,
+        'bwa_nthreads'     : 30,
+        'sam_nthreads'     : 4,
         #'reference_prefix' : '/data/data01/hs37d5/hs37d5.fasta',
         'reference_prefix' : '/ELS/els9/users/cesco/tmp/luca/ref/chr1.fasta',
         'tmp_space'        : '/ELS/els9/users/cesco/tmp/luca/',
@@ -89,6 +90,8 @@ def verify_conf(parser):
 
     if GlobalConf['bwa_nthreads'] <= 0:
         parser.error("Value of bwa_nthreads configuration must be > 0 (found {})".format(GlobalConf['bwa_nthreads']))
+    if GlobalConf['sam_nthreads'] <= 0:
+        parser.error("Value of sam_nthreads configuration must be > 0 (found {})".format(GlobalConf['sam_nthreads']))
 
 def run_bcl_converter(input_dir, output_dir, exec_path):
     logger.info("Running illumina bcl converter")
@@ -143,7 +146,7 @@ def _wait(jobs):
     # no need to return anything.  The AlignJob objects passed in through the
     # `jobs` list contain the return code
 
-def _run_bwa_to_cram(sample_file_lists, ref, output, bwa_path, samtools_path, nthreads):
+def _run_bwa_to_cram(sample_file_lists, ref, output, bwa_path, samtools_path, bwa_nthreads, sam_nthreads):
     r1_files = sorted(sample_file_lists[0])
     r2_files = sorted(sample_file_lists[1])
 
@@ -151,14 +154,14 @@ def _run_bwa_to_cram(sample_file_lists, ref, output, bwa_path, samtools_path, nt
     logger.debug("r2 files: %s", r2_files)
 
     cmd = "{} mem -t {:d} -T 0 {} <(gunzip -c {}) <(gunzip -c {})".format(
-            bwa_path, nthreads, ref, ' '.join(r1_files), ' '.join(r2_files))
-    cmd += " | {} view -T {} -F 0x900 -C --threads {} > {}".format(samtools_path, ref, nthreads, output + ".cram")
+            bwa_path, bwa_nthreads, ref, ' '.join(r1_files), ' '.join(r2_files))
+    cmd += " | {} view -T {} -F 0x900 -C --threads {} > {}".format(samtools_path, ref, sam_nthreads, output + ".cram")
 
     logger.debug("Executing cmd: %s", cmd)
     subprocess.check_call(cmd, shell=True, executable='/bin/bash')
 
 
-def run_alignments(bcl_output_dir, output_dir, reference, bwa_path, samtools_path, nthreads):
+def run_alignments(bcl_output_dir, output_dir, reference, bwa_path, samtools_path, bwa_nthreads, sam_nthreads):
     samples = _get_samples_from_bcl_output(bcl_output_dir)
     logger.info("Found %d samples in bcl output directory", len(samples))
     logger.debug("Making base output directory %s", output_dir)
@@ -169,7 +172,7 @@ def run_alignments(bcl_output_dir, output_dir, reference, bwa_path, samtools_pat
         logger.info("Aligning sample %s", name)
         output_file = os.path.join(output_dir, name)
         try:
-            _run_bwa_to_cram(file_lists, reference, output_file, bwa_path, samtools_path, nthreads)
+            _run_bwa_to_cram(file_lists, reference, output_file, bwa_path, samtools_path, bwa_nthreads, sam_nthreads)
         except subprocess.CalledProcessError as e:
             logger.error("Failed to align sample %s with files %s", name, file_lists)
             logger.exception(e)
@@ -203,7 +206,7 @@ def main(args):
         #logger.debug("cmd: %s", cmd)
         #subprocess.call(cmd)
         run_alignments(bcl_output_dir, options.output,
-                GlobalConf['reference_prefix'], options.bwa_path, options.samtools_path, GlobalConf['bwa_nthreads'])
+                GlobalConf['reference_prefix'], options.bwa_path, options.samtools_path, GlobalConf['bwa_nthreads'], GlobalConf['sam_nthreads'])
         time_after_align = time.time()
     except Exception as e:
         logger.error("Problem! {}".format(e))
